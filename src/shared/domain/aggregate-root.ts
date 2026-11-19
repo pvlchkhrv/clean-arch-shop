@@ -1,6 +1,5 @@
-import { AggregateRoot } from '@nestjs/cqrs';
+import { AggregateRoot as NestAggregateRoot } from '@nestjs/cqrs';
 
-export abstract class CustomAggregateRoot extends AggregateRoot {
-
+export abstract class AggregateRoot extends NestAggregateRoot {
 
 }

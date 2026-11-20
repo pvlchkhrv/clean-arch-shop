@@ -1,11 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ProductRepository } from '../../application/ports/product-repository.port.js';
+import {
+  ProductFilters,
+  ProductRepository,
+} from '../../application/ports/product-repository.port.js';
 import {
   DRIZZLE,
   type DrizzleDB,
 } from '../../../shared/infrastructure/database/postgres/drizzle.provider.js';
 import { Product } from '../../domain/entities/product.entity.js';
 import { products } from '../../../shared/infrastructure/database/postgres/schema/index.js';
+import { ProductId } from '../../domain/value-objects/product-id.vo.js';
+import { Sku } from '../../domain/value-objects/sku.vo.js';
+import { Money } from '../../../shared/domain/value-objects/money.vo.js';
+import { and, eq, gte, lte, SQL } from 'drizzle-orm';
 
 @Injectable()
 export class DrizzleProductRepository implements ProductRepository {
@@ -33,11 +40,45 @@ export class DrizzleProductRepository implements ProductRepository {
       });
   }
 
-  async findById(id: string): Promise<Product> {
+  async findById(id: ProductId): Promise<Product | null> {
+    const rows = await this.db
+      .select()
+      .from(products)
+      .where(eq(products.id, id.getValue()));
 
+    if (rows.length === 0) return null;
+
+    return DrizzleProductRepository.toDomain(rows[0]);
   }
 
-  async findAll(): Promise<Product[]> {}
+  async findAll(filters: ProductFilters): Promise<Product[]> {
+    const conditions: SQL[] = [];
+
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(products.isActive, filters.isActive));
+    }
+
+    if (filters?.minPrice !== undefined) {
+      conditions.push(
+        gte(products.priceAmount, Math.round(filters.minPrice * 100)),
+      );
+    }
+
+    if (filters?.maxPrice !== undefined) {
+      conditions.push(
+        lte(products.priceAmount, Math.round(filters.maxPrice * 100)),
+      );
+    }
+
+    const query = this.db.select().from(products);
+
+    const productRows =
+      conditions.length > 0
+        ? await query.where(and(...conditions))
+        : await query;
+
+    return productRows.map((row) => DrizzleProductRepository.toDomain(row));
+  }
 
   private static toPersistence(product: Product): typeof products.$inferSelect {
     return {
@@ -53,5 +94,20 @@ export class DrizzleProductRepository implements ProductRepository {
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     };
+  }
+
+  private static toDomain(row: typeof products.$inferSelect): Product {
+    return Product.reconstitute({
+      id: new ProductId(row.id),
+      name: row.name,
+      description: row.description,
+      sku: Sku.create(row.sku),
+      price: Money.create(row.priceAmount / 100, row.priceCurrency),
+      stock: row.stock,
+      isActive: row.isActive,
+      lowStockThreshold: row.lowStockThreshold,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    });
   }
 }

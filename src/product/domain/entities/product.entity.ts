@@ -36,7 +36,7 @@ export class Product extends AggregateRoot {
     this.#description = props.description;
     this.#price = props.price;
     this.#sku = props.sku;
-    this.#stock = props.stock
+    this.#stock = props.stock;
     this.#isActive = props.isActive;
     this.#lowStockThreshold = props.lowStockThreshold;
     this.#createdAt = props.createdAt;
@@ -47,8 +47,9 @@ export class Product extends AggregateRoot {
     name: string,
     description: string,
     sku: string,
-    price: Money,
-    stock: number
+    price: number,
+    currency: string,
+    stock: number,
   ): Product {
     Product.validateName(name);
     Product.validateStock(stock);
@@ -60,13 +61,13 @@ export class Product extends AggregateRoot {
       name,
       description,
       sku: Sku.create(sku),
-      price,
+      price: Money.create(price, currency),
       stock,
       isActive: true,
       lowStockThreshold: 5,
       createdAt: now,
       updatedAt: now,
-    })
+    });
   }
 
   get id(): ProductId {
@@ -115,13 +116,13 @@ export class Product extends AggregateRoot {
 
   private static validateName(name: string): void {
     if (name.length < 2) {
-      throw new Error('Product name must be at least 2 characters')
+      throw new Error('Product name must be at least 2 characters');
     }
   }
 
   private static validateStock(stock: number): void {
     if (stock < 0) {
-      throw new Error('Product stock cannot be negative')
+      throw new Error('Product stock cannot be negative');
     }
   }
 }

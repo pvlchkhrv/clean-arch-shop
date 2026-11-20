@@ -1,7 +1,7 @@
 import { Product } from '../../domain/entities/product.entity.js';
 import { ProductId } from '../../domain/value-objects/product-id.vo.js';
 
-const PRODUCT_REPOSITORY = Symbol('PRODUCT_REPOSITORY');
+export const PRODUCT_REPOSITORY = Symbol('PRODUCT_REPOSITORY');
 
 export interface ProductFilters {
   isActive?: boolean;
